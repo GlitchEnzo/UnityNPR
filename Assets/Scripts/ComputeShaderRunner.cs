@@ -12,6 +12,10 @@ public class ComputeShaderRunner : MonoBehaviour
     public ComputeShader copyShader;
     public RenderTexture copyResult;
 
+    public ComputeShader sobelShader;
+    public Texture2D sobelInput;
+    public RenderTexture sobelResult;
+
     void RunTestShader()
     {
         int kernelHandle = testShader.FindKernel("CSMain");
@@ -51,12 +55,27 @@ public class ComputeShaderRunner : MonoBehaviour
         copyShader.Dispatch(kernelHandle, (simpleResult.width + 32 - 1) / 32, (simpleResult.height + 32 - 1) / 32, 1);
     }
 
+    void RunSobelShader()
+    {
+        int kernelHandle = sobelShader.FindKernel("Sobel");
+
+        sobelResult = new RenderTexture(sobelInput.width, sobelInput.height, 0, RenderTextureFormat.ARGB32);
+        sobelResult.enableRandomWrite = true;
+        sobelResult.Create();
+
+        sobelShader.SetTexture(kernelHandle, "Input", sobelInput);
+        sobelShader.SetTexture(kernelHandle, "Output", sobelResult);
+        sobelShader.Dispatch(kernelHandle, 32, 32, 1);
+    }
+
     void Start()
     {
         RunTestShader();
         RunSimpleShader();
 
         RunCopyShader();
+
+        RunSobelShader();
     }
 
     void OnGUI()
