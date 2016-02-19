@@ -9,13 +9,15 @@ public class ComputeShaderRunner : MonoBehaviour
     public ComputeShader simpleShader;
     public RenderTexture simpleResult;
 
+    public ComputeShader copyShader;
+    public RenderTexture copyResult;
+
     void RunTestShader()
     {
         int kernelHandle = testShader.FindKernel("CSMain");
 
         testResult = new RenderTexture(256, 256, 0, RenderTextureFormat.ARGB32);
         testResult.enableRandomWrite = true;
-        //testResult.antiAliasing = 1;
         testResult.Create();
 
         testShader.SetTexture(kernelHandle, "Result", testResult);
@@ -28,11 +30,25 @@ public class ComputeShaderRunner : MonoBehaviour
 
         simpleResult = new RenderTexture(1024, 1024, 0, RenderTextureFormat.ARGB32);
         simpleResult.enableRandomWrite = true;
-        //simpleResult.antiAliasing = 1;
         simpleResult.Create();
 
         simpleShader.SetTexture(kernelHandle, "Output", simpleResult);
         simpleShader.Dispatch(kernelHandle, 32, 32, 1);
+    }
+
+    void RunCopyShader()
+    {
+        int kernelHandle = copyShader.FindKernel("Copy");
+
+        copyResult = new RenderTexture(simpleResult.width, simpleResult.height, 0, RenderTextureFormat.ARGB32);
+        copyResult.enableRandomWrite = true;
+        copyResult.Create();
+
+        copyShader.SetTexture(kernelHandle, "source", simpleResult);
+        copyShader.SetTexture(kernelHandle, "dest", copyResult);
+        copyShader.SetInt("width", simpleResult.width);
+        copyShader.SetInt("height", simpleResult.height);
+        copyShader.Dispatch(kernelHandle, (simpleResult.width + 32 - 1) / 32, (simpleResult.height + 32 - 1) / 32, 1);
     }
 
     void Start()
@@ -40,14 +56,12 @@ public class ComputeShaderRunner : MonoBehaviour
         RunTestShader();
         RunSimpleShader();
 
-        //RawImage rawImage = GetComponent<RawImage>();
-        //rawImage.texture = testResult;
+        RunCopyShader();
     }
 
     void OnGUI()
     {
         GUILayout.Label(testResult);
-        //GUI.DrawTexture(new Rect(0, 0, 256, 256), testResult);
 
         if (GUILayout.Button("Save"))
         {

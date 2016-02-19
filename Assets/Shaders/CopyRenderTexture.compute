@@ -1,0 +1,14 @@
+﻿// From here: https://evrydayvr.wordpress.com/2015/07/23/unity-bug-workaround-readpixels-and-rendertexture-antialiasing-1/
+#pragma kernel Copy
+
+RWTexture2D<float4> dest;
+Texture2D source;
+int width, height;
+SamplerState MyPointRepeatSampler;
+
+[numthreads(32,32,1)] // Must match .cs file
+void Copy (uint3 id : SV_DispatchThreadID) {
+    dest[id.xy] = source.SampleLevel(MyPointRepeatSampler,
+        float2(((float)id.x + 0.5) / width,
+               ((float)id.y + 0.5) / height), 0);
+}
