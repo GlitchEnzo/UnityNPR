@@ -16,8 +16,13 @@ public class ComputeShaderRunner : MonoBehaviour
     public Texture2D sobelInput;
     public RenderTexture sobelResult;
 
+    private System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
+
     void RunTestShader()
     {
+        stopwatch.Reset();
+        stopwatch.Start();
+
         int kernelHandle = testShader.FindKernel("CSMain");
 
         testResult = new RenderTexture(256, 256, 0, RenderTextureFormat.ARGB32);
@@ -26,10 +31,16 @@ public class ComputeShaderRunner : MonoBehaviour
 
         testShader.SetTexture(kernelHandle, "Result", testResult);
         testShader.Dispatch(kernelHandle, 256 / 8, 256 / 8, 1);
+
+        stopwatch.Stop();
+        Debug.LogFormat("TestShader took {0}ms", stopwatch.ElapsedMilliseconds);
     }
 
     void RunSimpleShader()
     {
+        stopwatch.Reset();
+        stopwatch.Start();
+
         int kernelHandle = simpleShader.FindKernel("SimpleMain");
 
         simpleResult = new RenderTexture(1024, 1024, 0, RenderTextureFormat.ARGB32);
@@ -38,10 +49,16 @@ public class ComputeShaderRunner : MonoBehaviour
 
         simpleShader.SetTexture(kernelHandle, "Output", simpleResult);
         simpleShader.Dispatch(kernelHandle, 32, 32, 1);
+
+        stopwatch.Stop();
+        Debug.LogFormat("SimpleShader took {0}ms", stopwatch.ElapsedMilliseconds);
     }
 
     void RunCopyShader()
     {
+        stopwatch.Reset();
+        stopwatch.Start();
+
         int kernelHandle = copyShader.FindKernel("Copy");
 
         copyResult = new RenderTexture(simpleResult.width, simpleResult.height, 0, RenderTextureFormat.ARGB32);
@@ -53,10 +70,16 @@ public class ComputeShaderRunner : MonoBehaviour
         copyShader.SetInt("width", simpleResult.width);
         copyShader.SetInt("height", simpleResult.height);
         copyShader.Dispatch(kernelHandle, (simpleResult.width + 32 - 1) / 32, (simpleResult.height + 32 - 1) / 32, 1);
+
+        stopwatch.Stop();
+        Debug.LogFormat("CopyShader took {0}ms", stopwatch.ElapsedMilliseconds);
     }
 
     void RunSobelShader()
     {
+        stopwatch.Reset();
+        stopwatch.Start();
+
         int kernelHandle = sobelShader.FindKernel("Sobel");
 
         sobelResult = new RenderTexture(sobelInput.width, sobelInput.height, 0, RenderTextureFormat.ARGB32);
@@ -66,6 +89,9 @@ public class ComputeShaderRunner : MonoBehaviour
         sobelShader.SetTexture(kernelHandle, "Input", sobelInput);
         sobelShader.SetTexture(kernelHandle, "Output", sobelResult);
         sobelShader.Dispatch(kernelHandle, 32, 32, 1);
+
+        stopwatch.Stop();
+        Debug.LogFormat("SobelShader took {0}ms", stopwatch.ElapsedMilliseconds);
     }
 
     void Start()
@@ -84,7 +110,13 @@ public class ComputeShaderRunner : MonoBehaviour
 
         if (GUILayout.Button("Save"))
         {
+            stopwatch.Reset();
+            stopwatch.Start();
+
             SaveRenderTexture(testResult, "testResult.png");
+
+            stopwatch.Stop();
+            Debug.LogFormat("Saving took {0} ms", stopwatch.ElapsedMilliseconds);
         }
     }
 
