@@ -1,0 +1,33 @@
+﻿#pragma kernel FindEdges
+
+struct Edge
+{
+	int IndexA;
+	int IndexB;
+};
+
+//StructuredBuffer<float4> Vertices;
+StructuredBuffer<int> Triangles;
+
+RWStructuredBuffer<Edge> Edges;
+
+Edge MakeEdge(int a, int b)
+{
+  Edge edge;
+  edge.IndexA = a;
+  edge.IndexB = b;
+  return edge;
+}
+
+[numthreads(1,1,1)]
+void FindEdges(uint3 id : SV_DispatchThreadID)
+{
+	// only operate on every third index
+	if (fmod(id.x, 3) == 0)
+	{
+		// TODO: add the edges to the output buffer
+	    Edge edge = MakeEdge(Triangles[id.x], Triangles[id.x + 1]);
+		edge = MakeEdge(Triangles[id.x + 1], Triangles[id.x + 2]);
+		edge = MakeEdge(Triangles[id.x + 2], Triangles[id.x]);
+	}
+}
