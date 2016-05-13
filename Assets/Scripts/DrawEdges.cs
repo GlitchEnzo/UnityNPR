@@ -61,7 +61,7 @@ public class DrawEdges : MonoBehaviour
         GL.Begin(GL.LINES);
         if (lineType == LineType.Edges || lineType == LineType.EdgesAndCreases)
         {
-            lineMaterial.SetColor("_Color", Color.white);
+            lineMaterial.SetColor("_Color", Color.blue);
             lineMaterial.SetPass(0);
 
             foreach (var keyValuePair in edgeList.edges)
@@ -78,7 +78,7 @@ public class DrawEdges : MonoBehaviour
         GL.Begin(GL.LINES);
         if (lineType == LineType.Creases || lineType == LineType.EdgesAndCreases)
         {
-            lineMaterial.SetColor("_Color", Color.blue);
+            lineMaterial.SetColor("_Color", Color.red);
             lineMaterial.SetPass(0);
 
             foreach (var crease in edgeList.creases)

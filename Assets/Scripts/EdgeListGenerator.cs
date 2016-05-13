@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 [RequireComponent(typeof(MeshFilter))]
 public class EdgeListGenerator : MonoBehaviour
@@ -46,7 +48,7 @@ public class EdgeListGenerator : MonoBehaviour
 
         public override int GetHashCode()
         {
-            return IndexA.GetHashCode() + IndexB.GetHashCode();
+            return IndexA.GetHashCode() ^ IndexB.GetHashCode();
         }
 
         public override string ToString()
@@ -97,6 +99,12 @@ public class EdgeListGenerator : MonoBehaviour
     void Start()
     {
         mesh = GetComponent<MeshFilter>().sharedMesh;
+
+        // initialize sizes
+        edges = new Dictionary<IEdgeID, Edge>(mesh.triangles.Length);
+        faces = new List<Face>(mesh.triangles.Length / 3);
+        creases = new List<Edge>(mesh.triangles.Length / 2); // estimate that half of the edges will be creases
+        
         FindFacesAndEdges();
         FindCreases();
     }
@@ -105,6 +113,9 @@ public class EdgeListGenerator : MonoBehaviour
     {
         Debug.LogFormat("{0}: There should be {1} edges or less.", name, mesh.triangles.Length);
         Debug.LogFormat("{0}: There are {1} vertices.", name, mesh.vertexCount);
+
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
 
         for (int i = 0; i <= mesh.triangles.Length - 3; i += 3)
         {
@@ -145,10 +156,16 @@ public class EdgeListGenerator : MonoBehaviour
 
         Debug.LogFormat("{0}: There were {1} unique edges found.", name, edges.Count);
         Debug.LogFormat("{0}: There were {1} faces found.", name, faces.Count);
+
+        stopwatch.Stop();
+        Debug.LogFormat("Finding edges took {0}ms", stopwatch.ElapsedMilliseconds);
     }
 
     private void FindCreases()
     {
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
+
         float thresholdAngle = 90.0f;
 
         creases.Clear();
@@ -174,6 +191,9 @@ public class EdgeListGenerator : MonoBehaviour
         }
 
         Debug.LogFormat("{0}: There were {1} creases found.", name, creases.Count);
+
+        stopwatch.Stop();
+        Debug.LogFormat("Finding creases took {0}ms", stopwatch.ElapsedMilliseconds);
     }
 
     public Vector3 GetVertex(int index)
