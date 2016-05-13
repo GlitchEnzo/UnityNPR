@@ -7,14 +7,8 @@ using Debug = UnityEngine.Debug;
 [RequireComponent(typeof(MeshFilter))]
 public class EdgeListGenerator : MonoBehaviour
 {
-    public interface IEdgeID
-    {
-        int IndexA { get; set; }
-        int IndexB { get; set; }
-    }
-
     [Serializable]
-    public struct Edge : IEdgeID
+    public class Edge
     {
         public int IndexA { get; set; }
         public int IndexB { get; set; }
@@ -48,7 +42,11 @@ public class EdgeListGenerator : MonoBehaviour
 
         public override int GetHashCode()
         {
-            return IndexA.GetHashCode() ^ IndexB.GetHashCode();
+            //return IndexA.GetHashCode() ^ IndexB.GetHashCode();
+
+            // Szudzik's function:
+            // http://stackoverflow.com/questions/919612/mapping-two-integers-to-one-in-a-unique-and-deterministic-way
+            return IndexA >= IndexB ? IndexA * IndexA + IndexA + IndexB : IndexA + IndexB * IndexB;
         }
 
         public override string ToString()
@@ -68,18 +66,18 @@ public class EdgeListGenerator : MonoBehaviour
 
         public Vector3 centroid;
 
-        public Face(int a, int b, int c, Mesh mesh)
+        public Face(int a, int b, int c, Vector3[] vertexBuffer)
         {
             indexA = a;
             indexB = b;
             indexC = c;
 
             normal = Vector3.zero;
-            Vector3 U = mesh.vertices[indexB] - mesh.vertices[indexA];
-            Vector3 V = mesh.vertices[indexC] - mesh.vertices[indexA];
+            Vector3 U = vertexBuffer[indexB] - vertexBuffer[indexA];
+            Vector3 V = vertexBuffer[indexC] - vertexBuffer[indexA];
             normal = Vector3.Cross(U, V).normalized;
 
-            centroid = (mesh.vertices[indexA] + mesh.vertices[indexB] + mesh.vertices[indexC]) / 3.0f;
+            centroid = (vertexBuffer[indexA] + vertexBuffer[indexB] + vertexBuffer[indexC]) / 3.0f;
         }
 
         public override string ToString()
@@ -88,22 +86,30 @@ public class EdgeListGenerator : MonoBehaviour
         }
     }
 
-    public Dictionary<IEdgeID, Edge> edges = new Dictionary<IEdgeID, Edge>();
+    public Dictionary<Edge, Edge> edges = new Dictionary<Edge, Edge>();
 
     public List<Face> faces = new List<Face>();
 
     public List<Edge> creases = new List<Edge>();
 
     private Mesh mesh;
+    int[] indexBuffer;
+    Vector3[] vertexBuffer;
 
     void Start()
     {
-        mesh = GetComponent<MeshFilter>().sharedMesh;
+        Debug.LogFormat("{0}.Start()", name);
+
+        MeshFilter meshFilter = GetComponent<MeshFilter>();
+        mesh = meshFilter.sharedMesh;
+
+        indexBuffer = mesh.triangles;
+        vertexBuffer = mesh.vertices;
 
         // initialize sizes
-        edges = new Dictionary<IEdgeID, Edge>(mesh.triangles.Length);
-        faces = new List<Face>(mesh.triangles.Length / 3);
-        creases = new List<Edge>(mesh.triangles.Length / 2); // estimate that half of the edges will be creases
+        edges = new Dictionary<Edge, Edge>(indexBuffer.Length);
+        faces = new List<Face>(indexBuffer.Length / 3);
+        creases = new List<Edge>(indexBuffer.Length / 2); // estimate that half of the edges will be creases
         
         FindFacesAndEdges();
         FindCreases();
@@ -111,46 +117,50 @@ public class EdgeListGenerator : MonoBehaviour
 
     private void FindFacesAndEdges()
     {
-        Debug.LogFormat("{0}: There should be {1} edges or less.", name, mesh.triangles.Length);
+        Debug.LogFormat("{0}: There should be {1} edges or less.", name, indexBuffer.Length);
+        Debug.LogFormat("{0}: There should be {1} faces.", name, indexBuffer.Length / 3);
         Debug.LogFormat("{0}: There are {1} vertices.", name, mesh.vertexCount);
 
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
 
-        for (int i = 0; i <= mesh.triangles.Length - 3; i += 3)
+        Edge temp;
+        
+
+        for (int i = 0; i <= indexBuffer.Length - 3; i += 3)
         {
-            Face face = new Face(mesh.triangles[i], mesh.triangles[i + 1], mesh.triangles[i + 2], mesh);
+            Face face = new Face(indexBuffer[i], indexBuffer[i + 1], indexBuffer[i + 2], vertexBuffer);
             faces.Add(face);
             int faceIndex = faces.Count - 1;
 
-            Edge edge = new Edge(mesh.triangles[i], mesh.triangles[i + 1], faceIndex);
-            if (!edges.ContainsKey(edge))
+            Edge edge = new Edge(indexBuffer[i], indexBuffer[i + 1], faceIndex);
+            if (!edges.TryGetValue(edge, out temp))
+            {
                 edges.Add(edge, edge);
+            }
             else
             {
-                Edge temp = edges[edge];
                 temp.FaceB = faceIndex;
-                edges[edge] = temp;
             }
 
-            edge = new Edge(mesh.triangles[i + 1], mesh.triangles[i + 2], faceIndex);
-            if (!edges.ContainsKey(edge))
+            edge = new Edge(indexBuffer[i + 1], indexBuffer[i + 2], faceIndex);
+            if (!edges.TryGetValue(edge, out temp))
+            {
                 edges.Add(edge, edge);
+            }
             else
             {
-                Edge temp = edges[edge];
                 temp.FaceB = faceIndex;
-                edges[edge] = temp;
             }
 
-            edge = new Edge(mesh.triangles[i + 2], mesh.triangles[i], faceIndex);
-            if (!edges.ContainsKey(edge))
+            edge = new Edge(indexBuffer[i + 2], indexBuffer[i], faceIndex);
+            if (!edges.TryGetValue(edge, out temp))
+            {
                 edges.Add(edge, edge);
+            }
             else
             {
-                Edge temp = edges[edge];
                 temp.FaceB = faceIndex;
-                edges[edge] = temp;
             }
         }
 
@@ -158,7 +168,7 @@ public class EdgeListGenerator : MonoBehaviour
         Debug.LogFormat("{0}: There were {1} faces found.", name, faces.Count);
 
         stopwatch.Stop();
-        Debug.LogFormat("Finding edges took {0}ms", stopwatch.ElapsedMilliseconds);
+        Debug.LogFormat("{0}: Finding edges took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
 
     private void FindCreases()
@@ -193,11 +203,11 @@ public class EdgeListGenerator : MonoBehaviour
         Debug.LogFormat("{0}: There were {1} creases found.", name, creases.Count);
 
         stopwatch.Stop();
-        Debug.LogFormat("Finding creases took {0}ms", stopwatch.ElapsedMilliseconds);
+        Debug.LogFormat("{0}: Finding creases took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
 
     public Vector3 GetVertex(int index)
     {
-        return mesh.vertices[index];
+        return vertexBuffer[index];
     }
 }
