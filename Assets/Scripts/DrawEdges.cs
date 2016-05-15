@@ -7,7 +7,9 @@ public class DrawEdges : MonoBehaviour
     {
         Edges,
         Creases,
-        EdgesAndCreases
+        Silhouettes,
+        All,
+        None
     }
 
     static Material lineMaterial;
@@ -59,7 +61,7 @@ public class DrawEdges : MonoBehaviour
 
         // Draw lines
         GL.Begin(GL.LINES);
-        if (lineType == LineType.Edges || lineType == LineType.EdgesAndCreases)
+        if (lineType == LineType.Edges || lineType == LineType.All)
         {
             lineMaterial.SetColor("_Color", Color.blue);
             lineMaterial.SetPass(0);
@@ -76,7 +78,7 @@ public class DrawEdges : MonoBehaviour
         GL.End();
 
         GL.Begin(GL.LINES);
-        if (lineType == LineType.Creases || lineType == LineType.EdgesAndCreases)
+        if (lineType == LineType.Creases || lineType == LineType.All)
         {
             lineMaterial.SetColor("_Color", Color.red);
             lineMaterial.SetPass(0);
@@ -87,6 +89,23 @@ public class DrawEdges : MonoBehaviour
                 GL.Vertex3(edgeVertexA.x, edgeVertexA.y, edgeVertexA.z);
 
                 var edgeVertexB = edgeList.GetVertex(crease.IndexB);
+                GL.Vertex3(edgeVertexB.x, edgeVertexB.y, edgeVertexB.z);
+            }
+        }
+        GL.End();
+
+        GL.Begin(GL.LINES);
+        if (lineType == LineType.Silhouettes || lineType == LineType.All)
+        {
+            lineMaterial.SetColor("_Color", Color.white);
+            lineMaterial.SetPass(0);
+
+            foreach (var silhouette in edgeList.silhouettes)
+            {
+                var edgeVertexA = edgeList.GetVertex(silhouette.IndexA);
+                GL.Vertex3(edgeVertexA.x, edgeVertexA.y, edgeVertexA.z);
+
+                var edgeVertexB = edgeList.GetVertex(silhouette.IndexB);
                 GL.Vertex3(edgeVertexB.x, edgeVertexB.y, edgeVertexB.z);
             }
         }

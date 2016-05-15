@@ -16,6 +16,9 @@ public class EdgeListGenerator : MonoBehaviour
         public int FaceA { get; set; }
         public int FaceB { get; set; }
 
+        public bool IsCrease { get; set; }
+        public bool IsSilhouette { get; set; }
+
         public Edge(int a, int b, int face)
         {
             if (a < b)
@@ -91,6 +94,7 @@ public class EdgeListGenerator : MonoBehaviour
     public List<Face> faces = new List<Face>();
 
     public List<Edge> creases = new List<Edge>();
+    public List<Edge> silhouettes = new List<Edge>();
 
     private Mesh mesh;
     int[] indexBuffer;
@@ -115,6 +119,14 @@ public class EdgeListGenerator : MonoBehaviour
         FindCreases();
     }
 
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            Rasterize(Camera.main);
+        }
+    }
+
     private void FindFacesAndEdges()
     {
         Debug.LogFormat("{0}: There should be {1} edges or less.", name, indexBuffer.Length);
@@ -125,7 +137,6 @@ public class EdgeListGenerator : MonoBehaviour
         stopwatch.Start();
 
         Edge temp;
-        
 
         for (int i = 0; i <= indexBuffer.Length - 3; i += 3)
         {
@@ -185,6 +196,7 @@ public class EdgeListGenerator : MonoBehaviour
             if (edge.Value.FaceA == edge.Value.FaceB)
             {
                 // if the edge is only on one face, it is a crease too
+                //edge.Value.IsCrease = true;
                 //creases.Add(edge.Value);
             }
             else
@@ -195,6 +207,7 @@ public class EdgeListGenerator : MonoBehaviour
                 if (angle > thresholdAngle)
                 {
                     Debug.LogFormat("Angle = {0} degrees", angle);
+                    edge.Value.IsCrease = true;
                     creases.Add(edge.Value);
                 }
             }
@@ -204,6 +217,38 @@ public class EdgeListGenerator : MonoBehaviour
 
         stopwatch.Stop();
         Debug.LogFormat("{0}: Finding creases took {1}ms", name, stopwatch.ElapsedMilliseconds);
+    }
+
+    private void Rasterize(Camera camera)
+    {
+        silhouettes.Clear();
+
+        // transform all verts
+        Vector3[] transformedVertexBuffer = new Vector3[vertexBuffer.Length];
+        for (int i = 0; i < vertexBuffer.Length; i++)
+        {
+            //transformedVertexBuffer[i] = vertexBuffer[i] * transform.localToWorldMatrix;
+            transformedVertexBuffer[i] = transform.TransformPoint(vertexBuffer[i]);
+        }
+
+        foreach (var edge in edges)
+        {
+            Vector3 faceANormal = transform.TransformVector(faces[edge.Value.FaceA].normal);
+            Vector3 faceBNormal = transform.TransformVector(faces[edge.Value.FaceB].normal);
+
+            bool isFaceAForward = Vector3.Dot(faceANormal, camera.transform.forward) < 0;
+            bool isFaceBForward = Vector3.Dot(faceBNormal, camera.transform.forward) < 0;
+
+            if (isFaceAForward ^ isFaceBForward)
+            {
+                edge.Value.IsSilhouette = true;
+                silhouettes.Add(edge.Value);
+            }
+            else
+            {
+                edge.Value.IsSilhouette = false;
+            }
+        }
     }
 
     public Vector3 GetVertex(int index)
