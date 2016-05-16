@@ -103,7 +103,7 @@ public class EdgeListGenerator : MonoBehaviour
 
     public bool alwaysFindSilhouettes;
 
-    private Mesh edgeMesh;
+    private List<Mesh> edgeMeshes;
 
     void Start()
     {
@@ -234,37 +234,65 @@ public class EdgeListGenerator : MonoBehaviour
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
 
-        Vector3[] newVertices = new Vector3[edges.Count * 2];
-        Vector2[] newUV = new Vector2[edges.Count * 2];
-        int[] newTriangles = new int[edges.Count * 2];
+        // two vertices for each edge (line)
+        int totalVertexCount = edges.Count * 2;
+
+        const int vertexLimit = 65000;
+
+        // Unity only allows for ~65,000 vertices [exactly 65,534] (only using 16 bit)
+        // so, we must divide up the edge mesh into multiple edge meshes, in multiples of 65000
+        // Note that DirectX 11+ and modern GPUs don't have this limitation since they use 32 bit
+        // However, Unity targets the lowest common denominator
+        int numberOfMeshes = edges.Count * 2 / vertexLimit + 1;
+
+        edgeMeshes = new List<Mesh>(numberOfMeshes);
+
+        Vector3[][] newVertices = new Vector3[numberOfMeshes][];
+        Vector2[][] newUV = new Vector2[numberOfMeshes][];
+        int[][] newTriangles = new int[numberOfMeshes][];
+
+        for (int meshIndex = 0; meshIndex < numberOfMeshes; meshIndex++)
+        {
+            //int size = totalVertexCount - (meshIndex * vertexLimit) % vertexLimit;
+            int size = Math.Min(vertexLimit, totalVertexCount - (meshIndex * vertexLimit));
+            newVertices[meshIndex] = new Vector3[size];
+            newUV[meshIndex] = new Vector2[size];
+            newTriangles[meshIndex] = new int[size];
+        }
 
         for (int i = 0; i < edges.Count; i++)
         {
-            newVertices[i * 2] = vertexBuffer[edges[i].IndexA];
-            newVertices[i * 2 + 1] = vertexBuffer[edges[i].IndexB];
+            int meshIndex = i * 2 / vertexLimit;
+            int vertIndex = i * 2 % vertexLimit;
+
+            newVertices[meshIndex][vertIndex] = vertexBuffer[edges[i].IndexA];
+            newVertices[meshIndex][vertIndex + 1] = vertexBuffer[edges[i].IndexB];
 
             // store the edge index as the UV
-            newUV[i * 2] = new Vector2(i + 1, 0);
-            newUV[i * 2 + 1] = new Vector2(i + 1, 0);
+            newUV[meshIndex][vertIndex] = new Vector2(i + 1, 0);
+            newUV[meshIndex][vertIndex + 1] = new Vector2(i + 1, 0);
 
             // since it's a line list, the 
-            newTriangles[i * 2] = i * 2;
-            newTriangles[i * 2 + 1] = i * 2 + 1;
+            newTriangles[meshIndex][vertIndex] = vertIndex;
+            newTriangles[meshIndex][vertIndex + 1] = vertIndex + 1;
         }
 
-        edgeMesh = new Mesh();
-        edgeMesh.vertices = newVertices;
-        edgeMesh.uv = newUV;
-        //edgeMesh.triangles = newTriangles;
-        edgeMesh.SetIndices(newTriangles, MeshTopology.Lines, 0);
+        for (int meshIndex = 0; meshIndex < numberOfMeshes; meshIndex++)
+        {
+            edgeMeshes.Add(new Mesh());
+            edgeMeshes[meshIndex].vertices = newVertices[meshIndex];
+            edgeMeshes[meshIndex].uv = newUV[meshIndex];
+            //edgeMeshes[meshIndex].triangles = newTriangles[meshIndex];
+            edgeMeshes[meshIndex].SetIndices(newTriangles[meshIndex], MeshTopology.Lines, 0);
 
-        GameObject edgeMeshGameObject = new GameObject(name + ".Edges");
-        MeshFilter meshFilter = edgeMeshGameObject.AddComponent<MeshFilter>();
-        meshFilter.sharedMesh = edgeMesh;
-        edgeMeshGameObject.AddComponent<MeshRenderer>();
+            GameObject edgeMeshGameObject = new GameObject(name + ".Edges" + meshIndex);
+            MeshFilter meshFilter = edgeMeshGameObject.AddComponent<MeshFilter>();
+            meshFilter.sharedMesh = edgeMeshes[meshIndex];
+            edgeMeshGameObject.AddComponent<MeshRenderer>();
+        }
 
         stopwatch.Stop();
-        Debug.LogFormat("{0}: Creating the edge mesh took {1}ms", name, stopwatch.ElapsedMilliseconds);
+        Debug.LogFormat("{0}: Creating {1} edge mesh(es) took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
 
     private void Rasterize(Camera camera)
