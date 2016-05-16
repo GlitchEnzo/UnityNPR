@@ -292,7 +292,7 @@ public class EdgeListGenerator : MonoBehaviour
         }
 
         stopwatch.Stop();
-        Debug.LogFormat("{0}: Creating {1} edge mesh(es) took {1}ms", name, stopwatch.ElapsedMilliseconds);
+        Debug.LogFormat("{0}: Creating {1} edge mesh(es) took {2}ms", name, edgeMeshes.Count, stopwatch.ElapsedMilliseconds);
     }
 
     private void Rasterize(Camera camera)
