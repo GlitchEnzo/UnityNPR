@@ -66,12 +66,12 @@ public class DrawEdges : MonoBehaviour
             lineMaterial.SetColor("_Color", Color.blue);
             lineMaterial.SetPass(0);
 
-            foreach (var keyValuePair in edgeList.edges)
+            foreach (var edge in edgeList.edges)
             {
-                var edgeVertexA = edgeList.GetVertex(keyValuePair.Value.IndexA);
+                var edgeVertexA = edgeList.GetVertex(edge.IndexA);
                 GL.Vertex3(edgeVertexA.x, edgeVertexA.y, edgeVertexA.z);
 
-                var edgeVertexB = edgeList.GetVertex(keyValuePair.Value.IndexB);
+                var edgeVertexB = edgeList.GetVertex(edge.IndexB);
                 GL.Vertex3(edgeVertexB.x, edgeVertexB.y, edgeVertexB.z);
             }
         }

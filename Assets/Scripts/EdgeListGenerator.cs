@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -89,7 +90,7 @@ public class EdgeListGenerator : MonoBehaviour
         }
     }
 
-    public Dictionary<Edge, Edge> edges = new Dictionary<Edge, Edge>();
+    public List<Edge> edges = new List<Edge>();
 
     public List<Face> faces = new List<Face>();
 
@@ -102,6 +103,8 @@ public class EdgeListGenerator : MonoBehaviour
 
     public bool alwaysFindSilhouettes;
 
+    private Mesh edgeMesh;
+
     void Start()
     {
         Debug.LogFormat("{0}.Start()", name);
@@ -113,12 +116,14 @@ public class EdgeListGenerator : MonoBehaviour
         vertexBuffer = mesh.vertices;
 
         // initialize sizes
-        edges = new Dictionary<Edge, Edge>(indexBuffer.Length);
+        edges = new List<Edge>(indexBuffer.Length);
         faces = new List<Face>(indexBuffer.Length / 3);
         creases = new List<Edge>(indexBuffer.Length / 2); // estimate that half of the edges will be creases
-        
+
         FindFacesAndEdges();
         FindCreases();
+
+        CreateEdgeMesh();
     }
 
     void Update()
@@ -138,6 +143,7 @@ public class EdgeListGenerator : MonoBehaviour
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
 
+        Dictionary<Edge, Edge> edgesDictionary = new Dictionary<Edge, Edge>(indexBuffer.Length);
         Edge temp;
 
         for (int i = 0; i <= indexBuffer.Length - 3; i += 3)
@@ -147,9 +153,9 @@ public class EdgeListGenerator : MonoBehaviour
             int faceIndex = faces.Count - 1;
 
             Edge edge = new Edge(indexBuffer[i], indexBuffer[i + 1], faceIndex);
-            if (!edges.TryGetValue(edge, out temp))
+            if (!edgesDictionary.TryGetValue(edge, out temp))
             {
-                edges.Add(edge, edge);
+                edgesDictionary.Add(edge, edge);
             }
             else
             {
@@ -157,9 +163,9 @@ public class EdgeListGenerator : MonoBehaviour
             }
 
             edge = new Edge(indexBuffer[i + 1], indexBuffer[i + 2], faceIndex);
-            if (!edges.TryGetValue(edge, out temp))
+            if (!edgesDictionary.TryGetValue(edge, out temp))
             {
-                edges.Add(edge, edge);
+                edgesDictionary.Add(edge, edge);
             }
             else
             {
@@ -167,15 +173,17 @@ public class EdgeListGenerator : MonoBehaviour
             }
 
             edge = new Edge(indexBuffer[i + 2], indexBuffer[i], faceIndex);
-            if (!edges.TryGetValue(edge, out temp))
+            if (!edgesDictionary.TryGetValue(edge, out temp))
             {
-                edges.Add(edge, edge);
+                edgesDictionary.Add(edge, edge);
             }
             else
             {
                 temp.FaceB = faceIndex;
             }
         }
+
+        edges = edgesDictionary.Values.ToList();
 
         Debug.LogFormat("{0}: There were {1} unique edges found.", name, edges.Count);
         Debug.LogFormat("{0}: There were {1} faces found.", name, faces.Count);
@@ -195,22 +203,22 @@ public class EdgeListGenerator : MonoBehaviour
 
         foreach (var edge in edges)
         {
-            if (edge.Value.FaceA == edge.Value.FaceB)
+            if (edge.FaceA == edge.FaceB)
             {
                 // if the edge is only on one face, it is a crease too
-                //edge.Value.IsCrease = true;
-                //creases.Add(edge.Value);
+                //edge.IsCrease = true;
+                //creases.Add(edge);
             }
             else
             {
-                float dotProduct = Vector3.Dot(faces[edge.Value.FaceA].normal, faces[edge.Value.FaceB].normal);
+                float dotProduct = Vector3.Dot(faces[edge.FaceA].normal, faces[edge.FaceB].normal);
                 float angle = Mathf.Acos(dotProduct) * Mathf.Rad2Deg;
 
                 if (angle > thresholdAngle)
                 {
                     Debug.LogFormat("Angle = {0} degrees", angle);
-                    edge.Value.IsCrease = true;
-                    creases.Add(edge.Value);
+                    edge.IsCrease = true;
+                    creases.Add(edge);
                 }
             }
         }
@@ -219,6 +227,44 @@ public class EdgeListGenerator : MonoBehaviour
 
         stopwatch.Stop();
         Debug.LogFormat("{0}: Finding creases took {1}ms", name, stopwatch.ElapsedMilliseconds);
+    }
+
+    private void CreateEdgeMesh()
+    {
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
+
+        Vector3[] newVertices = new Vector3[edges.Count * 2];
+        Vector2[] newUV = new Vector2[edges.Count * 2];
+        int[] newTriangles = new int[edges.Count * 2];
+
+        for (int i = 0; i < edges.Count; i++)
+        {
+            newVertices[i * 2] = vertexBuffer[edges[i].IndexA];
+            newVertices[i * 2 + 1] = vertexBuffer[edges[i].IndexB];
+
+            // store the edge index as the UV
+            newUV[i * 2] = new Vector2(i + 1, 0);
+            newUV[i * 2 + 1] = new Vector2(i + 1, 0);
+
+            // since it's a line list, the 
+            newTriangles[i * 2] = i * 2;
+            newTriangles[i * 2 + 1] = i * 2 + 1;
+        }
+
+        edgeMesh = new Mesh();
+        edgeMesh.vertices = newVertices;
+        edgeMesh.uv = newUV;
+        //edgeMesh.triangles = newTriangles;
+        edgeMesh.SetIndices(newTriangles, MeshTopology.Lines, 0);
+
+        GameObject edgeMeshGameObject = new GameObject(name + ".Edges");
+        MeshFilter meshFilter = edgeMeshGameObject.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = edgeMesh;
+        edgeMeshGameObject.AddComponent<MeshRenderer>();
+
+        stopwatch.Stop();
+        Debug.LogFormat("{0}: Creating the edge mesh took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
 
     private void Rasterize(Camera camera)
@@ -238,8 +284,8 @@ public class EdgeListGenerator : MonoBehaviour
 
         foreach (var edge in edges)
         {
-            Vector3 faceANormal = transform.TransformVector(faces[edge.Value.FaceA].normal);
-            Vector3 faceBNormal = transform.TransformVector(faces[edge.Value.FaceB].normal);
+            Vector3 faceANormal = transform.TransformVector(faces[edge.FaceA].normal);
+            Vector3 faceBNormal = transform.TransformVector(faces[edge.FaceB].normal);
 
             bool isFaceAForward = Vector3.Dot(faceANormal, camera.transform.forward) < 0;
             bool isFaceBForward = Vector3.Dot(faceBNormal, camera.transform.forward) < 0;
@@ -250,12 +296,12 @@ public class EdgeListGenerator : MonoBehaviour
             // backward + backward = skip, unless showing hidden creases
             if (isFaceAForward ^ isFaceBForward)
             {
-                edge.Value.IsSilhouette = true;
-                silhouettes.Add(edge.Value);
+                edge.IsSilhouette = true;
+                silhouettes.Add(edge);
             }
             else
             {
-                edge.Value.IsSilhouette = false;
+                edge.IsSilhouette = false;
             }
         }
 
