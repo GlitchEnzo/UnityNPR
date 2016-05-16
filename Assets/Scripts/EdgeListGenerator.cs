@@ -100,6 +100,8 @@ public class EdgeListGenerator : MonoBehaviour
     int[] indexBuffer;
     Vector3[] vertexBuffer;
 
+    public bool alwaysFindSilhouettes;
+
     void Start()
     {
         Debug.LogFormat("{0}.Start()", name);
@@ -121,7 +123,7 @@ public class EdgeListGenerator : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Return))
+        if (alwaysFindSilhouettes || Input.GetKeyDown(KeyCode.Return))
         {
             Rasterize(Camera.main);
         }
@@ -221,6 +223,9 @@ public class EdgeListGenerator : MonoBehaviour
 
     private void Rasterize(Camera camera)
     {
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
+
         silhouettes.Clear();
 
         // transform all verts
@@ -239,6 +244,10 @@ public class EdgeListGenerator : MonoBehaviour
             bool isFaceAForward = Vector3.Dot(faceANormal, camera.transform.forward) < 0;
             bool isFaceBForward = Vector3.Dot(faceBNormal, camera.transform.forward) < 0;
 
+            // forward + forward = skip, unless showing creases
+            // forward + backward = silhouette
+            // backward + forward = silhouette
+            // backward + backward = skip, unless showing hidden creases
             if (isFaceAForward ^ isFaceBForward)
             {
                 edge.Value.IsSilhouette = true;
@@ -249,6 +258,9 @@ public class EdgeListGenerator : MonoBehaviour
                 edge.Value.IsSilhouette = false;
             }
         }
+
+        stopwatch.Stop();
+        Debug.LogFormat("{0}: Finding silhouettes took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
 
     public Vector3 GetVertex(int index)
