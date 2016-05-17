@@ -103,7 +103,15 @@ public class EdgeListGenerator : MonoBehaviour
 
     public bool alwaysFindSilhouettes;
 
+    public Material edgeMaterial;
+
     private List<Mesh> edgeMeshes;
+
+    void Reset()
+    {
+        // TODO: Load the pre-made .mat
+        edgeMaterial = new Material(Shader.Find("NPR/EdgeLines"));
+    }
 
     void Start()
     {
@@ -288,7 +296,8 @@ public class EdgeListGenerator : MonoBehaviour
             GameObject edgeMeshGameObject = new GameObject(name + ".Edges" + meshIndex);
             MeshFilter meshFilter = edgeMeshGameObject.AddComponent<MeshFilter>();
             meshFilter.sharedMesh = edgeMeshes[meshIndex];
-            edgeMeshGameObject.AddComponent<MeshRenderer>();
+            MeshRenderer meshRenderer = edgeMeshGameObject.AddComponent<MeshRenderer>();
+            meshRenderer.sharedMaterial = edgeMaterial;
         }
 
         stopwatch.Stop();
