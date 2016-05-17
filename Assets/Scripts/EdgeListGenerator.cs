@@ -117,6 +117,11 @@ public class EdgeListGenerator : MonoBehaviour
     {
         Debug.LogFormat("{0}.Start()", name);
 
+        foreach (RenderTextureFormat format in Enum.GetValues(typeof(RenderTextureFormat)))
+        {
+            Debug.LogFormat("{0} supported = {1}", format, SystemInfo.SupportsRenderTextureFormat(format));
+        }
+
         MeshFilter meshFilter = GetComponent<MeshFilter>();
         mesh = meshFilter.sharedMesh;
 
