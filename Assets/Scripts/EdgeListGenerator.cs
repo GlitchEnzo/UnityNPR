@@ -281,7 +281,7 @@ public class EdgeListGenerator : MonoBehaviour
             newVertices[meshIndex][vertIndex] = vertexBuffer[edges[i].IndexA];
             newVertices[meshIndex][vertIndex + 1] = vertexBuffer[edges[i].IndexB];
 
-            // store the edge index as the UV
+            // store the edge index as the UV (perform a +1 in order to ensure it is 1-based, not 0-based - this allows 0s in the render texture to be ignored)
             newUV[meshIndex][vertIndex] = new Vector2(i + 1, 0);
             newUV[meshIndex][vertIndex + 1] = new Vector2(i + 1, 0);
 
@@ -303,6 +303,11 @@ public class EdgeListGenerator : MonoBehaviour
             meshFilter.sharedMesh = edgeMeshes[meshIndex];
             MeshRenderer meshRenderer = edgeMeshGameObject.AddComponent<MeshRenderer>();
             meshRenderer.sharedMaterial = edgeMaterial;
+
+            edgeMeshGameObject.transform.position = transform.position;
+            edgeMeshGameObject.transform.rotation = transform.rotation;
+            edgeMeshGameObject.transform.parent = transform;
+            edgeMeshGameObject.transform.localScale = Vector3.one;
         }
 
         stopwatch.Stop();
