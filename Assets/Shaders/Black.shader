@@ -27,9 +27,9 @@
 				return o;
 			}
 
-			int4 frag (v2f i) : SV_Target
+			float4 frag (v2f i) : SV_Target
 			{
-				return int4(0, 0, 0, 1);
+				return float4(0, 0, 0, 0);
 			}
 			ENDCG
 		}

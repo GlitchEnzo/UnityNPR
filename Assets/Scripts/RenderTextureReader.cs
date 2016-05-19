@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿using System.Diagnostics;
+using System.IO;
+using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 [RequireComponent(typeof(Camera))]
 public class RenderTextureReader : MonoBehaviour
@@ -31,7 +34,7 @@ public class RenderTextureReader : MonoBehaviour
         //    }
         //}
 
-        storageTexture = new Texture2D(1024, 768, TextureFormat.RFloat, false);
+        storageTexture = new Texture2D(1024, 768, TextureFormat.ARGB32, false);
         textureRect = new Rect(0, 0, 1024, 768);
 
         //Color[] colorData = new Color[1024 * 768];
@@ -55,22 +58,32 @@ public class RenderTextureReader : MonoBehaviour
         {
             if (attachedCamera != null)
             {
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
                 attachedCamera.Render();
 
                 RenderTexture.active = attachedCamera.targetTexture;
                 
                 storageTexture.ReadPixels(textureRect, 0, 0, false);
+                storageTexture.Apply();
 
                 RenderTexture.active = null;
 
-                Color[] data = storageTexture.GetPixels();
+                Color32[] data = storageTexture.GetPixels32();
                 foreach (var piece in data)
                 {
-                    if (piece.r != 0)
+                    if (piece.a != 0)
                     {
-                        Debug.LogFormat("Data = {0}", piece.r);
+                        Debug.LogFormat("Data = {0}", ColorConversion.Color32ToInt(piece));
                     }
                 }
+
+                //Debug.Log("Saving edges.png");
+                //File.WriteAllBytes("edges.png", storageTexture.EncodeToPNG());
+
+                stopwatch.Stop();
+                Debug.LogFormat("{0}: Reading edges took {1}ms", name, stopwatch.ElapsedMilliseconds);
             }
         }
     }
