@@ -261,7 +261,7 @@ public class EdgeListGenerator : MonoBehaviour
         edgeMeshes = new List<Mesh>(numberOfMeshes);
 
         Vector3[][] newVertices = new Vector3[numberOfMeshes][];
-        Vector2[][] newUV = new Vector2[numberOfMeshes][];
+        Color32[][] newColors = new Color32[numberOfMeshes][];
         int[][] newTriangles = new int[numberOfMeshes][];
 
         for (int meshIndex = 0; meshIndex < numberOfMeshes; meshIndex++)
@@ -269,7 +269,7 @@ public class EdgeListGenerator : MonoBehaviour
             //int size = totalVertexCount - (meshIndex * vertexLimit) % vertexLimit;
             int size = Math.Min(vertexLimit, totalVertexCount - (meshIndex * vertexLimit));
             newVertices[meshIndex] = new Vector3[size];
-            newUV[meshIndex] = new Vector2[size];
+            newColors[meshIndex] = new Color32[size];
             newTriangles[meshIndex] = new int[size];
         }
 
@@ -281,9 +281,9 @@ public class EdgeListGenerator : MonoBehaviour
             newVertices[meshIndex][vertIndex] = vertexBuffer[edges[i].IndexA];
             newVertices[meshIndex][vertIndex + 1] = vertexBuffer[edges[i].IndexB];
 
-            // store the edge index as the UV (perform a +1 in order to ensure it is 1-based, not 0-based - this allows 0s in the render texture to be ignored)
-            newUV[meshIndex][vertIndex] = new Vector2(i + 1, 0);
-            newUV[meshIndex][vertIndex + 1] = new Vector2(i + 1, 0);
+            // store the edge index as the vertex color (perform a +1 in order to ensure it is 1-based, not 0-based - this allows 0s in the render texture to be ignored)
+            newColors[meshIndex][vertIndex] = ColorConversion.IntToColor32(i + 1);
+            newColors[meshIndex][vertIndex + 1] = ColorConversion.IntToColor32(i + 1);
 
             // since it's a line list, the 
             newTriangles[meshIndex][vertIndex] = vertIndex;
@@ -294,7 +294,7 @@ public class EdgeListGenerator : MonoBehaviour
         {
             edgeMeshes.Add(new Mesh());
             edgeMeshes[meshIndex].vertices = newVertices[meshIndex];
-            edgeMeshes[meshIndex].uv = newUV[meshIndex];
+            edgeMeshes[meshIndex].colors32 = newColors[meshIndex];
             //edgeMeshes[meshIndex].triangles = newTriangles[meshIndex];
             edgeMeshes[meshIndex].SetIndices(newTriangles[meshIndex], MeshTopology.Lines, 0);
 
