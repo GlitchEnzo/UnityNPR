@@ -14,6 +14,8 @@ public class RenderTextureReader : MonoBehaviour
 
     void Start()
     {
+        ColorConversion.Test();
+
         attachedCamera = GetComponent<Camera>();
         attachedRenderTexture = attachedCamera.targetTexture;
 
