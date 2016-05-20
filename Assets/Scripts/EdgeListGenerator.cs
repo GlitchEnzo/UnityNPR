@@ -150,7 +150,7 @@ public class EdgeListGenerator : MonoBehaviour
         FindFacesAndEdges();
         FindCreases();
 
-        CreateEdgeMesh();
+        //CreateEdgeMesh();
     }
 
     void Update()
