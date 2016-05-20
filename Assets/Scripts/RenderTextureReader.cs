@@ -70,17 +70,17 @@ public class RenderTextureReader : MonoBehaviour
 
                 RenderTexture.active = null;
 
-                Color32[] data = storageTexture.GetPixels32();
-                foreach (var piece in data)
-                {
-                    if (piece.a != 0)
-                    {
-                        Debug.LogFormat("Data = {0}", ColorConversion.Color32ToInt(piece));
-                    }
-                }
+                //Color32[] data = storageTexture.GetPixels32();
+                //foreach (var piece in data)
+                //{
+                //    if (piece.a != 0)
+                //    {
+                //        Debug.LogFormat("Data = {0}", ColorConversion.Color32ToInt(piece));
+                //    }
+                //}
 
-                //Debug.Log("Saving edges.png");
-                //File.WriteAllBytes("edges.png", storageTexture.EncodeToPNG());
+                Debug.Log("Saving edges.png");
+                File.WriteAllBytes("edges.png", storageTexture.EncodeToPNG());
 
                 stopwatch.Stop();
                 Debug.LogFormat("{0}: Reading edges took {1}ms", name, stopwatch.ElapsedMilliseconds);

@@ -97,6 +97,7 @@ public class EdgeListGenerator : MonoBehaviour
     public List<Edge> creases = new List<Edge>();
     public List<Edge> silhouettes = new List<Edge>();
 
+    // the original mesh data
     private Mesh mesh;
     int[] indexBuffer;
     Vector3[] vertexBuffer;
@@ -105,7 +106,14 @@ public class EdgeListGenerator : MonoBehaviour
 
     public Material edgeMaterial;
 
+    // a mesh consisting of all of the edge lines (divided into groups of 65,000 verts)
     private List<Mesh> edgeMeshes;
+
+    // a mesh of the current silhouette
+    private Mesh silhouetteMesh;
+    int[] silhouetteIndexBuffer;
+    Color32[] silhouetteColorBuffer;
+    Vector3[] silhouetteVertexBuffer;
 
     void Reset()
     {
@@ -133,6 +141,12 @@ public class EdgeListGenerator : MonoBehaviour
         faces = new List<Face>(indexBuffer.Length / 3);
         creases = new List<Edge>(indexBuffer.Length / 2); // estimate that half of the edges will be creases
 
+        // default the silhouette to 1000 verts
+        silhouetteMesh = new Mesh();
+        silhouetteIndexBuffer = new int[1000];
+        silhouetteColorBuffer = new Color32[1000];
+        silhouetteVertexBuffer = new Vector3[1000];
+
         FindFacesAndEdges();
         FindCreases();
 
@@ -143,7 +157,7 @@ public class EdgeListGenerator : MonoBehaviour
     {
         if (alwaysFindSilhouettes || Input.GetKeyDown(KeyCode.Return))
         {
-            Rasterize(Camera.main);
+            GenerateSilhouetteMesh(Camera.main);
         }
     }
 
@@ -314,7 +328,7 @@ public class EdgeListGenerator : MonoBehaviour
         Debug.LogFormat("{0}: Creating {1} edge mesh(es) took {2}ms", name, edgeMeshes.Count, stopwatch.ElapsedMilliseconds);
     }
 
-    private void Rasterize(Camera camera)
+    private void GenerateSilhouetteMesh(Camera camera)
     {
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -322,12 +336,12 @@ public class EdgeListGenerator : MonoBehaviour
         silhouettes.Clear();
 
         // transform all verts
-        Vector3[] transformedVertexBuffer = new Vector3[vertexBuffer.Length];
-        for (int i = 0; i < vertexBuffer.Length; i++)
-        {
-            //transformedVertexBuffer[i] = vertexBuffer[i] * transform.localToWorldMatrix;
-            transformedVertexBuffer[i] = transform.TransformPoint(vertexBuffer[i]);
-        }
+        //Vector3[] transformedVertexBuffer = new Vector3[vertexBuffer.Length];
+        //for (int i = 0; i < vertexBuffer.Length; i++)
+        //{
+        //    //transformedVertexBuffer[i] = vertexBuffer[i] * transform.localToWorldMatrix;
+        //    transformedVertexBuffer[i] = transform.TransformPoint(vertexBuffer[i]);
+        //}
 
         foreach (var edge in edges)
         {
@@ -351,6 +365,47 @@ public class EdgeListGenerator : MonoBehaviour
                 edge.IsSilhouette = false;
             }
         }
+
+        if (silhouettes.Count * 2 > silhouetteVertexBuffer.Length)
+        {
+            Debug.LogWarningFormat("Length = {0}.  Need = {1}. Growing...", silhouetteVertexBuffer.Length, silhouettes.Count * 2);
+
+            silhouetteIndexBuffer = new int[silhouettes.Count * 2];
+            silhouetteColorBuffer = new Color32[silhouettes.Count * 2];
+            silhouetteVertexBuffer = new Vector3[silhouettes.Count * 2];
+        }
+
+        int vertIndex;
+        for (int i = 0; i < silhouettes.Count; i++)
+        {
+            vertIndex = i * 2;
+            silhouetteVertexBuffer[vertIndex] = vertexBuffer[silhouettes[i].IndexA];
+            silhouetteVertexBuffer[vertIndex + 1] = vertexBuffer[silhouettes[i].IndexB];
+
+            // store the silhouette index as the vertex color (perform a +1 in order to ensure it is 1-based, not 0-based - this allows 0s in the render texture to be ignored)
+            silhouetteColorBuffer[vertIndex] = ColorConversion.IntToColor32(i + 1);
+            silhouetteColorBuffer[vertIndex + 1] = ColorConversion.IntToColor32(i + 1);
+
+            // since it's a line list, the 
+            silhouetteIndexBuffer[vertIndex] = vertIndex;
+            silhouetteIndexBuffer[vertIndex + 1] = vertIndex + 1;
+        }
+
+        silhouetteMesh.vertices = silhouetteVertexBuffer;
+        silhouetteMesh.colors32 = silhouetteColorBuffer;
+        //silhouetteMesh.triangles = silhouetteIndexBuffer;
+        silhouetteMesh.SetIndices(silhouetteIndexBuffer, MeshTopology.Lines, 0);
+
+        GameObject silhouetteGameObject = new GameObject(name + ".Silhouette");
+        MeshFilter meshFilter = silhouetteGameObject.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = silhouetteMesh;
+        MeshRenderer meshRenderer = silhouetteGameObject.AddComponent<MeshRenderer>();
+        meshRenderer.sharedMaterial = edgeMaterial;
+
+        silhouetteGameObject.transform.position = transform.position;
+        silhouetteGameObject.transform.rotation = transform.rotation;
+        silhouetteGameObject.transform.parent = transform;
+        silhouetteGameObject.transform.localScale = Vector3.one;
 
         stopwatch.Stop();
         Debug.LogFormat("{0}: Finding silhouettes took {1}ms", name, stopwatch.ElapsedMilliseconds);
