@@ -9,7 +9,7 @@ using Debug = UnityEngine.Debug;
 public class EdgeListGenerator : MonoBehaviour
 {
     [Serializable]
-    public class Edge
+    public struct Edge
     {
         public int IndexA { get; set; }
         public int IndexB { get; set; }
@@ -20,7 +20,7 @@ public class EdgeListGenerator : MonoBehaviour
         public bool IsCrease { get; set; }
         public bool IsSilhouette { get; set; }
 
-        public Edge(int a, int b, int face)
+        public Edge(int a, int b, int face) : this()
         {
             if (a < b)
             {
@@ -256,8 +256,9 @@ public class EdgeListGenerator : MonoBehaviour
                 if (angle > thresholdAngle)
                 {
                     Debug.LogFormat("Angle = {0} degrees", angle);
-                    edge.IsCrease = true;
-                    creases.Add(edge);
+                    Edge creaseEdge = edge;
+                    creaseEdge.IsCrease = true;
+                    creases.Add(creaseEdge);
                 }
             }
         }
@@ -347,6 +348,10 @@ public class EdgeListGenerator : MonoBehaviour
 
         silhouettes.Clear();
 
+        stopwatch.Stop();
+        Debug.LogFormat("{0}: Clearing silhouettes took {1}ms", name, stopwatch.ElapsedMilliseconds);
+        stopwatch.Reset();
+
         // transform all verts
         //Vector3[] transformedVertexBuffer = new Vector3[vertexBuffer.Length];
         //for (int i = 0; i < vertexBuffer.Length; i++)
@@ -355,10 +360,17 @@ public class EdgeListGenerator : MonoBehaviour
         //    transformedVertexBuffer[i] = transform.TransformPoint(vertexBuffer[i]);
         //}
 
-        foreach (var edge in edges)
+        stopwatch.Start();
+
+        //foreach (var edge in edges)
+        for (int i = 0; i < edges.Count; i++)
         {
-            Vector3 faceANormal = transform.TransformVector(faces[edge.FaceA].normal);
-            Vector3 faceBNormal = transform.TransformVector(faces[edge.FaceB].normal);
+            // TransformPoint = position, rotation, and scale used
+            // TransformDirection = rotation only used
+            // TransformVector = rotation and scale used
+            var edge = edges[i];
+            Vector3 faceANormal = transform.TransformDirection(faces[edge.FaceA].normal);
+            Vector3 faceBNormal = transform.TransformDirection(faces[edge.FaceB].normal);
 
             bool isFaceAForward = Vector3.Dot(faceANormal, camera.transform.forward) < 0;
             bool isFaceBForward = Vector3.Dot(faceBNormal, camera.transform.forward) < 0;
@@ -378,6 +390,10 @@ public class EdgeListGenerator : MonoBehaviour
             }
         }
 
+        stopwatch.Stop();
+        Debug.LogFormat("{0}: Finding silhouette edges took {1}ms", name, stopwatch.ElapsedMilliseconds);
+        stopwatch.Reset();
+
         if (silhouettes.Count * 2 > silhouetteVertexBuffer.Length)
         {
             Debug.LogWarningFormat("Length = {0}.  Need = {1}. Growing...", silhouetteVertexBuffer.Length, silhouettes.Count * 2);
@@ -386,6 +402,8 @@ public class EdgeListGenerator : MonoBehaviour
             silhouetteColorBuffer = new Color32[silhouettes.Count * 2];
             silhouetteVertexBuffer = new Vector3[silhouettes.Count * 2];
         }
+
+        stopwatch.Start();
 
         int vertIndex;
         for (int i = 0; i < silhouettes.Count; i++)
@@ -406,7 +424,7 @@ public class EdgeListGenerator : MonoBehaviour
         silhouetteMeshFilter.sharedMesh = silhouetteMesh;
 
         stopwatch.Stop();
-        Debug.LogFormat("{0}: Finding silhouettes took {1}ms", name, stopwatch.ElapsedMilliseconds);
+        Debug.LogFormat("{0}: Building silhouette mesh took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
 
     public Vector3 GetVertex(int index)
