@@ -111,9 +111,10 @@ public class EdgeListGenerator : MonoBehaviour
 
     // a mesh of the current silhouette
     private Mesh silhouetteMesh;
-    int[] silhouetteIndexBuffer;
-    Color32[] silhouetteColorBuffer;
-    Vector3[] silhouetteVertexBuffer;
+    private int[] silhouetteIndexBuffer;
+    private Color32[] silhouetteColorBuffer;
+    private Vector3[] silhouetteVertexBuffer;
+    private MeshFilter silhouetteMeshFilter;
 
     void Reset()
     {
@@ -125,10 +126,21 @@ public class EdgeListGenerator : MonoBehaviour
     {
         Debug.LogFormat("{0}.Start()", name);
 
-        foreach (RenderTextureFormat format in Enum.GetValues(typeof(RenderTextureFormat)))
-        {
-            Debug.LogFormat("{0} supported = {1}", format, SystemInfo.SupportsRenderTextureFormat(format));
-        }
+        GameObject silhouetteGameObject = new GameObject(name + ".Silhouette");
+        silhouetteMeshFilter = silhouetteGameObject.AddComponent<MeshFilter>();
+        silhouetteMeshFilter.sharedMesh = silhouetteMesh;
+        MeshRenderer meshRenderer = silhouetteGameObject.AddComponent<MeshRenderer>();
+        meshRenderer.sharedMaterial = edgeMaterial;
+
+        silhouetteGameObject.transform.position = transform.position;
+        silhouetteGameObject.transform.rotation = transform.rotation;
+        silhouetteGameObject.transform.parent = transform;
+        silhouetteGameObject.transform.localScale = Vector3.one;
+
+        //foreach (RenderTextureFormat format in Enum.GetValues(typeof(RenderTextureFormat)))
+        //{
+        //    Debug.LogFormat("{0} supported = {1}", format, SystemInfo.SupportsRenderTextureFormat(format));
+        //}
 
         MeshFilter meshFilter = GetComponent<MeshFilter>();
         mesh = meshFilter.sharedMesh;
@@ -391,21 +403,7 @@ public class EdgeListGenerator : MonoBehaviour
             silhouetteIndexBuffer[vertIndex + 1] = vertIndex + 1;
         }
 
-        silhouetteMesh.vertices = silhouetteVertexBuffer;
-        silhouetteMesh.colors32 = silhouetteColorBuffer;
-        //silhouetteMesh.triangles = silhouetteIndexBuffer;
-        silhouetteMesh.SetIndices(silhouetteIndexBuffer, MeshTopology.Lines, 0);
-
-        GameObject silhouetteGameObject = new GameObject(name + ".Silhouette");
-        MeshFilter meshFilter = silhouetteGameObject.AddComponent<MeshFilter>();
-        meshFilter.sharedMesh = silhouetteMesh;
-        MeshRenderer meshRenderer = silhouetteGameObject.AddComponent<MeshRenderer>();
-        meshRenderer.sharedMaterial = edgeMaterial;
-
-        silhouetteGameObject.transform.position = transform.position;
-        silhouetteGameObject.transform.rotation = transform.rotation;
-        silhouetteGameObject.transform.parent = transform;
-        silhouetteGameObject.transform.localScale = Vector3.one;
+        silhouetteMeshFilter.sharedMesh = silhouetteMesh;
 
         stopwatch.Stop();
         Debug.LogFormat("{0}: Finding silhouettes took {1}ms", name, stopwatch.ElapsedMilliseconds);
