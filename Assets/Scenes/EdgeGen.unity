@@ -163,7 +163,10 @@ MonoBehaviour:
   creases: []
   silhouettes: []
   alwaysFindSilhouettes: 0
+  createSilhouetteKey: 13
   edgeMaterial: {fileID: 0}
+  edgeCamera: {fileID: 0}
+  visibleSilhouettes: []
 --- !u!1 &375568692
 GameObject:
   m_ObjectHideFlags: 0
@@ -243,12 +246,17 @@ MonoBehaviour:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 453974599}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9525bb06dbe49854ca90a60f061fd485, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   keyToRead: 114
+--- !u!20 &453974601 stripped
+Camera:
+  m_PrefabParentObject: {fileID: 2090350, guid: 6cfea5a498a720147a5a1d3fe5f0ea6e,
+    type: 2}
+  m_PrefabInternal: {fileID: 1123814342}
 --- !u!1 &846424624 stripped
 GameObject:
   m_PrefabParentObject: {fileID: 100000, guid: f999ec243dbd189498d48468512f3596, type: 3}
@@ -281,7 +289,10 @@ MonoBehaviour:
   creases: []
   silhouettes: []
   alwaysFindSilhouettes: 0
+  createSilhouetteKey: 13
   edgeMaterial: {fileID: 2100000, guid: 35cba0e192cddfa4aae23db08cc5bf38, type: 2}
+  edgeCamera: {fileID: 453974601}
+  visibleSilhouettes: []
 --- !u!1 &988948972
 GameObject:
   m_ObjectHideFlags: 0
@@ -319,7 +330,10 @@ MonoBehaviour:
   creases: []
   silhouettes: []
   alwaysFindSilhouettes: 0
+  createSilhouetteKey: 13
   edgeMaterial: {fileID: 0}
+  edgeCamera: {fileID: 0}
+  visibleSilhouettes: []
 --- !u!23 &988948974
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -445,7 +459,7 @@ Prefab:
       objectReference: {fileID: 0}
     - target: {fileID: 194480, guid: 6cfea5a498a720147a5a1d3fe5f0ea6e, type: 2}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 6cfea5a498a720147a5a1d3fe5f0ea6e, type: 2}

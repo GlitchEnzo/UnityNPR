@@ -9,7 +9,7 @@ using Debug = UnityEngine.Debug;
 public class EdgeListGenerator : MonoBehaviour
 {
     [Serializable]
-    public struct Edge
+    public class Edge
     {
         public int IndexA { get; set; }
         public int IndexB { get; set; }
@@ -20,7 +20,7 @@ public class EdgeListGenerator : MonoBehaviour
         public bool IsCrease { get; set; }
         public bool IsSilhouette { get; set; }
 
-        public Edge(int a, int b, int face) : this()
+        public Edge(int a, int b, int face) //: this()
         {
             if (a < b)
             {
@@ -101,8 +101,9 @@ public class EdgeListGenerator : MonoBehaviour
     private Mesh mesh;
     int[] indexBuffer;
     Vector3[] vertexBuffer;
-
+        
     public bool alwaysFindSilhouettes;
+    public KeyCode createSilhouetteKey = KeyCode.Return;
 
     public Material edgeMaterial;
 
@@ -115,6 +116,12 @@ public class EdgeListGenerator : MonoBehaviour
     private Color32[] silhouetteColorBuffer;
     private Vector3[] silhouetteVertexBuffer;
     private MeshFilter silhouetteMeshFilter;
+
+    public Camera edgeCamera;
+    private Texture2D storageTexture;
+    private Rect textureRect;
+
+    public List<Edge> visibleSilhouettes = new List<Edge>();
 
     void Reset()
     {
@@ -159,6 +166,9 @@ public class EdgeListGenerator : MonoBehaviour
         silhouetteColorBuffer = new Color32[1000];
         silhouetteVertexBuffer = new Vector3[1000];
 
+        storageTexture = new Texture2D(1024, 768, TextureFormat.ARGB32, false);
+        textureRect = new Rect(0, 0, 1024, 768);
+
         FindFacesAndEdges();
         FindCreases();
 
@@ -167,9 +177,10 @@ public class EdgeListGenerator : MonoBehaviour
 
     void Update()
     {
-        if (alwaysFindSilhouettes || Input.GetKeyDown(KeyCode.Return))
+        if (alwaysFindSilhouettes || Input.GetKeyDown(createSilhouetteKey))
         {
-            GenerateSilhouetteMesh(Camera.main);
+            GenerateSilhouetteMesh(edgeCamera);
+            GetVisibleSilhouettes();
         }
     }
 
@@ -365,10 +376,11 @@ public class EdgeListGenerator : MonoBehaviour
         //foreach (var edge in edges)
         for (int i = 0; i < edges.Count; i++)
         {
+            var edge = edges[i];
+
             // TransformPoint = position, rotation, and scale used
             // TransformDirection = rotation only used
             // TransformVector = rotation and scale used
-            var edge = edges[i];
             Vector3 faceANormal = transform.TransformDirection(faces[edge.FaceA].normal);
             Vector3 faceBNormal = transform.TransformDirection(faces[edge.FaceB].normal);
 
@@ -391,7 +403,7 @@ public class EdgeListGenerator : MonoBehaviour
         }
 
         stopwatch.Stop();
-        Debug.LogFormat("{0}: Finding silhouette edges took {1}ms", name, stopwatch.ElapsedMilliseconds);
+        Debug.LogFormat("{0}: Finding {1} silhouette edges took {2}ms", name, silhouettes.Count, stopwatch.ElapsedMilliseconds);
         stopwatch.Reset();
 
         if (silhouettes.Count * 2 > silhouetteVertexBuffer.Length)
@@ -421,10 +433,47 @@ public class EdgeListGenerator : MonoBehaviour
             silhouetteIndexBuffer[vertIndex + 1] = vertIndex + 1;
         }
 
+        silhouetteMesh.vertices = silhouetteVertexBuffer;
+        silhouetteMesh.colors32 = silhouetteColorBuffer;
+        //silhouetteMesh.triangles = silhouetteIndexBuffer;
+        silhouetteMesh.SetIndices(silhouetteIndexBuffer, MeshTopology.Lines, 0);
         silhouetteMeshFilter.sharedMesh = silhouetteMesh;
 
         stopwatch.Stop();
         Debug.LogFormat("{0}: Building silhouette mesh took {1}ms", name, stopwatch.ElapsedMilliseconds);
+    }
+
+    private void GetVisibleSilhouettes()
+    {
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
+
+        visibleSilhouettes.Clear();
+
+        edgeCamera.Render();
+
+        RenderTexture.active = edgeCamera.targetTexture;
+
+        storageTexture.ReadPixels(textureRect, 0, 0, false);
+        storageTexture.Apply();
+
+        RenderTexture.active = null;
+
+        Color32[] data = storageTexture.GetPixels32();
+        foreach (var piece in data)
+        {
+            if (piece.a != 0)
+            {
+                //Debug.LogFormat("Data = {0}", ColorConversion.Color32ToInt(piece));
+                visibleSilhouettes.Add(edges[ColorConversion.Color32ToInt(piece) - 1]);
+            }
+        }
+
+        Debug.Log("Saving edges.png");
+        System.IO.File.WriteAllBytes("edges.png", storageTexture.EncodeToPNG());
+
+        stopwatch.Stop();
+        Debug.LogFormat("{0}: Getting {1} visible silhouettes took {2}ms", name, visibleSilhouettes.Count, stopwatch.ElapsedMilliseconds);
     }
 
     public Vector3 GetVertex(int index)
