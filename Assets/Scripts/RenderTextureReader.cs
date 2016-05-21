@@ -10,8 +10,6 @@ public class RenderTextureReader : MonoBehaviour
 
     private Camera attachedCamera;
 
-    private RenderTexture attachedRenderTexture;
-
     private Texture2D storageTexture;
     private Rect textureRect;
 
@@ -20,7 +18,6 @@ public class RenderTextureReader : MonoBehaviour
         ColorConversion.Test();
 
         attachedCamera = GetComponent<Camera>();
-        attachedRenderTexture = attachedCamera.targetTexture;
 
         //foreach (TextureFormat format in Enum.GetValues(typeof(TextureFormat)))
         //{
