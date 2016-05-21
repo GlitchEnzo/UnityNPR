@@ -166,7 +166,6 @@ MonoBehaviour:
   createSilhouetteKey: 13
   edgeMaterial: {fileID: 0}
   edgeCamera: {fileID: 0}
-  visibleSilhouettes: []
 --- !u!1 &375568692
 GameObject:
   m_ObjectHideFlags: 0
@@ -292,7 +291,6 @@ MonoBehaviour:
   createSilhouetteKey: 13
   edgeMaterial: {fileID: 2100000, guid: 35cba0e192cddfa4aae23db08cc5bf38, type: 2}
   edgeCamera: {fileID: 453974601}
-  visibleSilhouettes: []
 --- !u!1 &988948972
 GameObject:
   m_ObjectHideFlags: 0
@@ -333,7 +331,6 @@ MonoBehaviour:
   createSilhouetteKey: 13
   edgeMaterial: {fileID: 0}
   edgeCamera: {fileID: 0}
-  visibleSilhouettes: []
 --- !u!23 &988948974
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -570,8 +567,8 @@ Camera:
   m_GameObject: {fileID: 1814453708}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0.019607844}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 1, g: 1, b: 0.90588236, a: 1}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0

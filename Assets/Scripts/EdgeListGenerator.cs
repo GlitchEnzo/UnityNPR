@@ -118,10 +118,11 @@ public class EdgeListGenerator : MonoBehaviour
     private MeshFilter silhouetteMeshFilter;
 
     public Camera edgeCamera;
+    private RenderTexture renderTexture;
     private Texture2D storageTexture;
     private Rect textureRect;
 
-    public List<Edge> visibleSilhouettes = new List<Edge>();
+    public Dictionary<int, Edge> visibleSilhouettes = new Dictionary<int, Edge>();
 
     void Reset()
     {
@@ -166,8 +167,11 @@ public class EdgeListGenerator : MonoBehaviour
         silhouetteColorBuffer = new Color32[1000];
         silhouetteVertexBuffer = new Vector3[1000];
 
-        storageTexture = new Texture2D(1024, 768, TextureFormat.ARGB32, false);
-        textureRect = new Rect(0, 0, 1024, 768);
+        Debug.LogFormat("Creating a {0}x{1} RenderTexture", Screen.width, Screen.height);
+        renderTexture = new RenderTexture(Screen.width, Screen.height, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        storageTexture = new Texture2D(Screen.width, Screen.height, TextureFormat.ARGB32, false);
+        textureRect = new Rect(0, 0, Screen.width, Screen.height);
+        edgeCamera.targetTexture = renderTexture;
 
         FindFacesAndEdges();
         FindCreases();
@@ -465,7 +469,13 @@ public class EdgeListGenerator : MonoBehaviour
             if (piece.a != 0)
             {
                 //Debug.LogFormat("Data = {0}", ColorConversion.Color32ToInt(piece));
-                visibleSilhouettes.Add(edges[ColorConversion.Color32ToInt(piece) - 1]);
+
+                // get the color as an integer index into the edges.  perform a -1 since it was stored with a +1 to allow 0s to be ignored.
+                int edgeIndex = ColorConversion.Color32ToInt(piece) - 1;
+                if (!visibleSilhouettes.ContainsKey(edgeIndex))
+                {
+                    visibleSilhouettes.Add(edgeIndex, edges[edgeIndex]);
+                }
             }
         }
 
