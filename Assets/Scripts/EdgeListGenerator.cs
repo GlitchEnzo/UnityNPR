@@ -101,7 +101,7 @@ public class EdgeListGenerator : MonoBehaviour
     private Mesh mesh;
     int[] indexBuffer;
     Vector3[] vertexBuffer;
-        
+
     public bool alwaysFindSilhouettes;
     public KeyCode createSilhouetteKey = KeyCode.Return;
 
@@ -496,9 +496,12 @@ public class EdgeListGenerator : MonoBehaviour
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
 
+        silhouetteSegments.Clear();
+
         foreach (var edgeKVP in visibleSilhouettes)
         {
             Edge edge = edgeKVP.Value;
+            int edgeIndex = edgeKVP.Key;
 
             // convert from model space to world space
             var vertexA = transform.TransformPoint(vertexBuffer[edge.IndexA]);
@@ -518,11 +521,82 @@ public class EdgeListGenerator : MonoBehaviour
 
             // "scan-convert" along the line in the render texture color data to see which part of the edge is actually present (a segment)
             // save off any neighboring edges encountered
+            Segment segment = new Segment();
+            segment.EdgeIndex = edgeIndex;
+            int textureWidth = storageTexture.width;
+            bool segmentStarted = false;
             int slope = (int)((vertexB.y - vertexA.y) / (vertexB.x - vertexA.x));
             int y = (int)vertexA.y;
             for (int x = (int)vertexA.x; x <= vertexB.x; x++)
             {
+                // TODO: Add range checks
                 // read pixel and surrounding pixels
+                int center    = ColorConversion.Color32ToInt(pixelData[y * textureWidth + x]) - 1;
+                int upLeft    = ColorConversion.Color32ToInt(pixelData[(y - 1) * textureWidth + x - 1]) - 1;
+                int up        = ColorConversion.Color32ToInt(pixelData[(y - 1) * textureWidth + x]) - 1;
+                int upRight   = ColorConversion.Color32ToInt(pixelData[(y - 1) * textureWidth + x + 1]) - 1;
+                int left      = ColorConversion.Color32ToInt(pixelData[y * textureWidth + x - 1]) - 1;
+                int right     = ColorConversion.Color32ToInt(pixelData[y * textureWidth + x + 1]) - 1;
+                int downLeft  = ColorConversion.Color32ToInt(pixelData[(y + 1) * textureWidth + x - 1]) - 1;
+                int down      = ColorConversion.Color32ToInt(pixelData[(y + 1) * textureWidth + x]) - 1;
+                int downRight = ColorConversion.Color32ToInt(pixelData[(y + 1) * textureWidth + x + 1]) - 1;
+
+                // store any neighboring edges we encounter along this edge
+                if (upLeft > 0 && upLeft != edgeIndex && !segment.NeighborEdges.Contains(upLeft))
+                {
+                    segment.NeighborEdges.Add(upLeft);
+                }
+                if (up > 0 && up != edgeIndex && !segment.NeighborEdges.Contains(up))
+                {
+                    segment.NeighborEdges.Add(up);
+                }
+                if (upRight > 0 && upRight != edgeIndex && !segment.NeighborEdges.Contains(upRight))
+                {
+                    segment.NeighborEdges.Add(upRight);
+                }
+                if (left > 0 && left != edgeIndex && !segment.NeighborEdges.Contains(left))
+                {
+                    segment.NeighborEdges.Add(left);
+                }
+                if (right > 0 && right != edgeIndex && !segment.NeighborEdges.Contains(right))
+                {
+                    segment.NeighborEdges.Add(right);
+                }
+                if (downLeft > 0 && downLeft != edgeIndex && !segment.NeighborEdges.Contains(downLeft))
+                {
+                    segment.NeighborEdges.Add(downLeft);
+                }
+                if (down > 0 && down != edgeIndex && !segment.NeighborEdges.Contains(down))
+                {
+                    segment.NeighborEdges.Add(upLeft);
+                }
+                if (downRight > 0 && downRight != edgeIndex && !segment.NeighborEdges.Contains(downRight))
+                {
+                    segment.NeighborEdges.Add(downRight);
+                }
+
+                // start or end the segment if the edge was detected or nots
+                if (upLeft == edgeIndex || up == edgeIndex || upRight == edgeIndex ||
+                    left == edgeIndex || center == edgeIndex || right == edgeIndex ||
+                    downLeft == edgeIndex || down == edgeIndex || downRight == edgeIndex)
+                {
+                    if (!segmentStarted)
+                    {
+                        segmentStarted = true;
+                        segment.EndpointA = new Vector3(x, y);
+                    }
+                }
+                else
+                {
+                    if (segmentStarted)
+                    {
+                        // the segment is now ended
+                        // TODO: Add support for multiple segments formed from the same edge
+                        segment.EndpointB = new Vector3(x, y);
+                        silhouetteSegments.Add(edgeIndex, segment);
+                        break;
+                    }
+                }
 
                 // increment y
                 y = y + slope;
