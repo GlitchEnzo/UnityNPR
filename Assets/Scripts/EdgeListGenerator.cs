@@ -120,9 +120,11 @@ public class EdgeListGenerator : MonoBehaviour
     public Camera edgeCamera;
     private RenderTexture renderTexture;
     private Texture2D storageTexture;
+    private Color32[] pixelData;
     private Rect textureRect;
 
     public Dictionary<int, Edge> visibleSilhouettes = new Dictionary<int, Edge>();
+    public Dictionary<int, Segment> silhouetteSegments = new Dictionary<int, Segment>();
 
     void Reset()
     {
@@ -447,6 +449,9 @@ public class EdgeListGenerator : MonoBehaviour
         Debug.LogFormat("{0}: Building silhouette mesh took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
 
+    /// <summary>
+    /// Gets all of the visible silhouettes by rendering out the scene into a render texture storing the edge IDs.
+    /// </summary>
     private void GetVisibleSilhouettes()
     {
         Stopwatch stopwatch = new Stopwatch();
@@ -463,8 +468,8 @@ public class EdgeListGenerator : MonoBehaviour
 
         RenderTexture.active = null;
 
-        Color32[] data = storageTexture.GetPixels32();
-        foreach (var piece in data)
+        pixelData = storageTexture.GetPixels32();
+        foreach (var piece in pixelData)
         {
             if (piece.a != 0)
             {
@@ -484,6 +489,48 @@ public class EdgeListGenerator : MonoBehaviour
 
         stopwatch.Stop();
         Debug.LogFormat("{0}: Getting {1} visible silhouettes took {2}ms", name, visibleSilhouettes.Count, stopwatch.ElapsedMilliseconds);
+    }
+
+    private void GetSegments()
+    {
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
+
+        foreach (var edgeKVP in visibleSilhouettes)
+        {
+            Edge edge = edgeKVP.Value;
+
+            // convert from model space to world space
+            var vertexA = transform.TransformPoint(vertexBuffer[edge.IndexA]);
+            var vertexB = transform.TransformPoint(vertexBuffer[edge.IndexB]);
+
+            // convert from world space to screen space
+            vertexA = edgeCamera.WorldToScreenPoint(vertexA);
+            vertexB = edgeCamera.WorldToScreenPoint(vertexB);
+
+            // ensure that vertex A is the left-most vertex
+            if (vertexA.x > vertexB.x)
+            {
+                var temp = vertexA;
+                vertexA = vertexB;
+                vertexB = temp;
+            }
+
+            // "scan-convert" along the line in the render texture color data to see which part of the edge is actually present (a segment)
+            // save off any neighboring edges encountered
+            int slope = (int)((vertexB.y - vertexA.y) / (vertexB.x - vertexA.x));
+            int y = (int)vertexA.y;
+            for (int x = (int)vertexA.x; x <= vertexB.x; x++)
+            {
+                // read pixel and surrounding pixels
+
+                // increment y
+                y = y + slope;
+            }
+        }
+
+        stopwatch.Stop();
+        Debug.LogFormat("{0}: Getting silhouette edge segments took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
 
     public Vector3 GetVertex(int index)
