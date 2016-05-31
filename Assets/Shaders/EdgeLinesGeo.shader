@@ -9,10 +9,13 @@
 	{
 		Pass
 		{
+			Cull Off
+
 			CGPROGRAM
             #pragma target 5.0
 			#pragma vertex vert
-			#pragma geometry GS_Main
+			//#pragma geometry GS_Main
+            #pragma geometry geo
 			#pragma fragment frag
 			
 			#include "UnityCG.cginc"
@@ -43,32 +46,40 @@
 			[maxvertexcount(4)]
 			void geo(line v2f p[2], inout TriangleStream<v2f> triStream)
 			{
-				float2 direction = p[1].vertex.xy - p[0].vertex.xy;
-				float2 normal = float2(-direction.y, direction.x);
+				float3 direction = p[1].vertex.xyz - p[0].vertex.xyz;
 
-				float2 width = float2(1 / 1024, 1 / 768);
-				float pixelWidth = 5;
+				float3 look = _WorldSpaceCameraPos - p[0].vertex;
+				float distanceFromCamera = length(look) * 0.01f;
+				//look.y = 0;
+				look = normalize(look);
 
-				float2 upLeft = p[0].vertex.xy + normal * width * pixelWidth;
-				float2 bottomLeft = p[0].vertex.xy - normal * width * pixelWidth;
-				float2 upRight = p[1].vertex.xy + normal * width * pixelWidth;
-				float2 bottomRight = p[1].vertex.xy - normal * width * pixelWidth;
+				float3 right = cross(direction, look);
+				right = normalize(right);
+
+				float smallSize = _Size * distanceFromCamera;
+
+				float4 upLeft      = float4(p[0].vertex.xyz + right * smallSize, 1.0f);
+				float4 bottomLeft  = float4(p[0].vertex.xyz - right * smallSize, 1.0f);
+				float4 upRight     = float4(p[1].vertex.xyz + right * smallSize, 1.0f);
+				float4 bottomRight = float4(p[1].vertex.xyz - right * smallSize, 1.0f);
+
+				float4x4 vp = mul(UNITY_MATRIX_MVP, _World2Object);
 
 				v2f pIn;
 
-				pIn.vertex = float4(bottomRight, p[1].vertex.z, p[1].vertex.w);
+				pIn.vertex = mul(vp, upRight);
 				pIn.color = p[1].color;
 				triStream.Append(pIn);
 
-				pIn.vertex = float4(upRight, p[1].vertex.z, p[1].vertex.w);
+				pIn.vertex = mul(vp, bottomRight);
 				pIn.color = p[1].color;
 				triStream.Append(pIn);
 
-				pIn.vertex = float4(upLeft, p[0].vertex.z, p[0].vertex.w);
+				pIn.vertex = mul(vp, upLeft);
 				pIn.color = p[0].color;
 				triStream.Append(pIn);
 
-				pIn.vertex = float4(bottomLeft, p[0].vertex.z, p[0].vertex.w);
+				pIn.vertex = mul(vp, bottomLeft);
 				pIn.color = p[0].color;
 				triStream.Append(pIn);
 			}
