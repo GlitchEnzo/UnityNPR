@@ -1,4 +1,6 @@
-﻿Shader "NPR/EdgeLines"
+﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+
+Shader "NPR/EdgeLines"
 {
 	SubShader
 	{
@@ -25,7 +27,7 @@
 			v2f vert (appdata v)
 			{
 				v2f o;
-				o.vertex = mul(UNITY_MATRIX_MVP, v.vertex);
+				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.color = v.color;
 				return o;
 			}

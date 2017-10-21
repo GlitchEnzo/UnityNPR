@@ -1,4 +1,9 @@
-﻿Shader "NPR/EdgeLines"
+﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+
+// Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
+// Upgrade NOTE: replaced '_World2Object' with 'unity_WorldToObject'
+
+Shader "NPR/EdgeLines"
 {
 	Properties
 	{
@@ -38,7 +43,7 @@
 			{
 				v2f o;
 				//o.vertex = mul(UNITY_MATRIX_MVP, v.vertex);
-				o.vertex = mul(_Object2World, v.vertex);
+				o.vertex = mul(unity_ObjectToWorld, v.vertex);
 				o.color = v.color;
 				return o;
 			}
@@ -63,7 +68,8 @@
 				float4 upRight     = float4(p[1].vertex.xyz + right * smallSize, 1.0f);
 				float4 bottomRight = float4(p[1].vertex.xyz - right * smallSize, 1.0f);
 
-				float4x4 vp = mul(UNITY_MATRIX_MVP, _World2Object);
+				//float4x4 vp = UnityObjectToClipPos(unity_WorldToObject);
+				float4x4 vp = UNITY_MATRIX_VP;
 
 				v2f pIn;
 
@@ -102,7 +108,8 @@
 				v[2] = float4(p[0].vertex - halfS * right - halfS * up, 1.0f);
 				v[3] = float4(p[0].vertex - halfS * right + halfS * up, 1.0f);
 
-				float4x4 vp = mul(UNITY_MATRIX_MVP, _World2Object);
+				//float4x4 vp = UnityObjectToClipPos(unity_WorldToObject);
+				float4x4 vp = UNITY_MATRIX_VP;
 				v2f pIn;
 				pIn.vertex = mul(vp, v[0]);
 				pIn.color = p[0].color;

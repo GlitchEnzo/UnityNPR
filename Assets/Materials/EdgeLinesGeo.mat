@@ -15,5 +15,9 @@ Material:
   m_SavedProperties:
     serializedVersion: 2
     m_TexEnvs: {}
-    m_Floats: {}
+    m_Floats:
+      data:
+        first:
+          name: _Size
+        second: 0.21
     m_Colors: {}

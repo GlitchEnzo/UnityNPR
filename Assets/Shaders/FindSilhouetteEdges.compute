@@ -1,0 +1,44 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+struct Edge
+{
+	int ID;
+
+	float3 NormalA;
+	float3 NormalB;
+
+	float3 VertexA;
+	float3 VertexB;
+};
+
+// input
+RWStructuredBuffer<Edge> Edges;
+float4x4 ModelMatrix;
+float3 cameraForwardVector;
+
+// output
+AppendStructuredBuffer<Edge> SilhouetteEdges;
+
+[numthreads(32,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	// transform normal vector from local/model space to world space
+	float3 faceANormal = mul(ModelMatrix, Edges[id.x].NormalA).xyz;
+	float3 faceBNormal = mul(ModelMatrix, Edges[id.x].NormalB).xyz;
+
+	bool isFaceAForward = dot(faceANormal, cameraForwardVector) < 0;
+	bool isFaceBForward = dot(faceBNormal, cameraForwardVector) < 0;
+
+	// forward + forward = skip, unless showing creases
+	// forward + backward = silhouette
+	// backward + forward = silhouette
+	// backward + backward = skip, unless showing hidden creases
+
+	// isFaceAForward XOR isFaceBForward, but HLSL has no boolean XOR operator
+	// (!isFaceAForward && isFaceBForward) || (isFaceAForward && !isFaceBForward)
+	if ((!isFaceAForward && isFaceBForward) || (isFaceAForward && !isFaceBForward))
+	{
+		SilhouetteEdges.Append(Edges[id.x]);
+	}
+}

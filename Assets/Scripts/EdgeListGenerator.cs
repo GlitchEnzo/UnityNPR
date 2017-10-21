@@ -136,6 +136,20 @@ public class EdgeListGenerator : MonoBehaviour
     {
         Debug.LogFormat("{0}.Start()", name);
 
+        // Terminology:
+        // Edge = the line between two vertices in the mesh
+        // Segment = a visible piece of an edge
+        // Chain = a set of segments connected together to create a single stroke
+
+        // 0) [ONE-TIME] CPU: Find all edges in mesh
+        // 1) GPU: Find all silhouette edges (visible and occluded)
+        // 2) GPU: Render mesh as solid color and silhouette edges as lines
+        //         Store all visible silhouette edge pixels (edge id, screenspace position) in append buffer
+        // 3) CPU: Sort the buffer of visible edges pixels by edge id and screenspace position (can this be done on the GPU?)
+        // 4) CPU: Step through the each pixel and determine start and end points of edge segments
+        // 5) CPU: Step through each segment and chain them together
+        // 6) GPU: Draw the chains as textured triangle lists [or line lists expanded in the geometry shader]
+
         GameObject silhouetteGameObject = new GameObject(name + ".Silhouette");
         silhouetteMeshFilter = silhouetteGameObject.AddComponent<MeshFilter>();
         silhouetteMeshFilter.sharedMesh = silhouetteMesh;
@@ -484,11 +498,16 @@ public class EdgeListGenerator : MonoBehaviour
             }
         }
 
+        stopwatch.Stop();
+        Debug.LogFormat("{0}: Getting {1} visible silhouettes took {2}ms", name, visibleSilhouettes.Count, stopwatch.ElapsedMilliseconds);
+        stopwatch.Reset();
+
         Debug.Log("Saving edges.png");
+        stopwatch.Start();
         System.IO.File.WriteAllBytes("edges.png", storageTexture.EncodeToPNG());
 
         stopwatch.Stop();
-        Debug.LogFormat("{0}: Getting {1} visible silhouettes took {2}ms", name, visibleSilhouettes.Count, stopwatch.ElapsedMilliseconds);
+        Debug.LogFormat("{0}: Saving edges.png took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
 
     private void GetSegments()
