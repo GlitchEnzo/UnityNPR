@@ -201,6 +201,7 @@ public class EdgeListGenerator : MonoBehaviour
         {
             GenerateSilhouetteMesh(edgeCamera);
             GetVisibleSilhouettes();
+            GetSegments();
         }
     }
 
@@ -286,7 +287,7 @@ public class EdgeListGenerator : MonoBehaviour
 
                 if (angle > thresholdAngle)
                 {
-                    Debug.LogFormat("Angle = {0} degrees", angle);
+                    Debug.LogFormat("Crease Angle = {0} degrees", angle);
                     Edge creaseEdge = edge;
                     creaseEdge.IsCrease = true;
                     creases.Add(creaseEdge);
@@ -493,7 +494,7 @@ public class EdgeListGenerator : MonoBehaviour
                 int edgeIndex = ColorConversion.Color32ToInt(piece) - 1;
                 if (!visibleSilhouettes.ContainsKey(edgeIndex))
                 {
-                    visibleSilhouettes.Add(edgeIndex, edges[edgeIndex]);
+                    visibleSilhouettes.Add(edgeIndex, silhouettes[edgeIndex]);
                 }
             }
         }
@@ -505,7 +506,6 @@ public class EdgeListGenerator : MonoBehaviour
         Debug.Log("Saving edges.png");
         stopwatch.Start();
         System.IO.File.WriteAllBytes("edges.png", storageTexture.EncodeToPNG());
-
         stopwatch.Stop();
         Debug.LogFormat("{0}: Saving edges.png took {1}ms", name, stopwatch.ElapsedMilliseconds);
     }
@@ -515,7 +515,11 @@ public class EdgeListGenerator : MonoBehaviour
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
 
+        Texture2D softwareRasterization = new Texture2D(storageTexture.width, storageTexture.height);
+
         silhouetteSegments.Clear();
+
+        Debug.LogFormat("{0}: edgeCamera.pixelWidth={1}, storageTexture.width={2}", name, edgeCamera.pixelWidth, storageTexture.width);
 
         foreach (var edgeKVP in visibleSilhouettes)
         {
@@ -527,6 +531,7 @@ public class EdgeListGenerator : MonoBehaviour
             var vertexB = transform.TransformPoint(vertexBuffer[edge.IndexB]);
 
             // convert from world space to screen space
+            // bottom-left is (0,0) and top-right is (pixelWidth, pixelHeight)
             vertexA = edgeCamera.WorldToScreenPoint(vertexA);
             vertexB = edgeCamera.WorldToScreenPoint(vertexB);
 
@@ -544,10 +549,13 @@ public class EdgeListGenerator : MonoBehaviour
             segment.EdgeIndex = edgeIndex;
             int textureWidth = storageTexture.width;
             bool segmentStarted = false;
-            int slope = (int)((vertexB.y - vertexA.y) / (vertexB.x - vertexA.x));
-            int y = (int)vertexA.y;
-            for (int x = (int)vertexA.x; x <= vertexB.x; x++)
+            int slope = Mathf.RoundToInt((vertexB.y - vertexA.y) / (vertexB.x - vertexA.x));
+            int y = Mathf.RoundToInt(vertexA.y);
+            int endX = Mathf.RoundToInt(vertexB.x);
+            for (int x = Mathf.RoundToInt(vertexA.x); x <= endX; x++)
             {
+                softwareRasterization.SetPixel(x, y, ColorConversion.IntToColor32(edgeIndex));
+
                 // TODO: Add range checks
                 // read pixel and surrounding pixels
                 int center    = ColorConversion.Color32ToInt(pixelData[y * textureWidth + x]) - 1;
@@ -559,6 +567,13 @@ public class EdgeListGenerator : MonoBehaviour
                 int downLeft  = ColorConversion.Color32ToInt(pixelData[(y + 1) * textureWidth + x - 1]) - 1;
                 int down      = ColorConversion.Color32ToInt(pixelData[(y + 1) * textureWidth + x]) - 1;
                 int downRight = ColorConversion.Color32ToInt(pixelData[(y + 1) * textureWidth + x + 1]) - 1;
+
+                //if (upLeft != -1 || up != -1 || upRight != -1 ||
+                //    left != -1 || center != -1 || right != -1 ||
+                //    downLeft != -1 || down != -1 || downRight != -1)
+                //{
+                //    Debug.LogFormat("Found actual edge!");
+                //}
 
                 // store any neighboring edges we encounter along this edge
                 if (upLeft > 0 && upLeft != edgeIndex && !segment.NeighborEdges.Contains(upLeft))
@@ -594,7 +609,7 @@ public class EdgeListGenerator : MonoBehaviour
                     segment.NeighborEdges.Add(downRight);
                 }
 
-                // start or end the segment if the edge was detected or nots
+                // start or end the segment if the edge was detected or not
                 if (upLeft == edgeIndex || up == edgeIndex || upRight == edgeIndex ||
                     left == edgeIndex || center == edgeIndex || right == edgeIndex ||
                     downLeft == edgeIndex || down == edgeIndex || downRight == edgeIndex)
@@ -622,8 +637,10 @@ public class EdgeListGenerator : MonoBehaviour
             }
         }
 
+        System.IO.File.WriteAllBytes("softwareRasterization.png", softwareRasterization.EncodeToPNG());
+
         stopwatch.Stop();
-        Debug.LogFormat("{0}: Getting silhouette edge segments took {1}ms", name, stopwatch.ElapsedMilliseconds);
+        Debug.LogFormat("{0}: Getting {1} segments took {2}ms", name, silhouetteSegments.Count, stopwatch.ElapsedMilliseconds);
     }
 
     public Vector3 GetVertex(int index)

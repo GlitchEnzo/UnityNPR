@@ -36,8 +36,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 	// backward + backward = skip, unless showing hidden creases
 
 	// isFaceAForward XOR isFaceBForward, but HLSL has no boolean XOR operator
-	// (!isFaceAForward && isFaceBForward) || (isFaceAForward && !isFaceBForward)
-	if ((!isFaceAForward && isFaceBForward) || (isFaceAForward && !isFaceBForward))
+	// long form: (!isFaceAForward && isFaceBForward) || (isFaceAForward && !isFaceBForward)
+	// short form: isFaceAForward != isFaceBForward
+	if (isFaceAForward != isFaceBForward)
 	{
 		SilhouetteEdges.Append(Edges[id.x]);
 	}

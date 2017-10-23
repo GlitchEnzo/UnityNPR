@@ -15,8 +15,6 @@ public class RenderTextureReader : MonoBehaviour
 
     void Start()
     {
-        ColorConversion.Test();
-
         attachedCamera = GetComponent<Camera>();
 
         //foreach (TextureFormat format in Enum.GetValues(typeof(TextureFormat)))

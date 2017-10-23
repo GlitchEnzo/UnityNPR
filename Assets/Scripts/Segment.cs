@@ -10,4 +10,9 @@ public class Segment
     public int EdgeIndex { get; set; }
 
     public List<int> NeighborEdges { get; set; }
+
+    public Segment()
+    {
+        NeighborEdges = new List<int>();
+    }
 }
